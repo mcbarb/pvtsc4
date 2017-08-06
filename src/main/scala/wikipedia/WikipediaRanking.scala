@@ -30,7 +30,7 @@ object WikipediaRanking {
    *  Hint2: consider using method `mentionsLanguage` on `WikipediaArticle`
    */
   def occurrencesOfLang(lang: String, rdd: RDD[WikipediaArticle]): Int = rdd
-        .filter(w => w.text matches (".*" ++ lang ++".*"))
+        .filter(_.mentionsLanguage(lang))
         .count().toInt
 
   /* (1) Use `occurrencesOfLang` to compute the ranking of the languages
@@ -47,7 +47,7 @@ object WikipediaRanking {
    * to the Wikipedia pages in which it occurs.
    */
   def makeIndex(langs: List[String], rdd: RDD[WikipediaArticle]): RDD[(String, Iterable[WikipediaArticle])] = {
-    rdd.flatMap(w => langs.map((_, w)).filter(t => t._2.text matches (".*" ++ t._1 ++ ".*") )).groupByKey
+    rdd.flatMap(w => langs.map((_, w)).filter(t => t._2.mentionsLanguage(t._1) )).groupByKey
   }
 
   /* (2) Compute the language ranking again, but now using the inverted index. Can you notice
@@ -66,7 +66,7 @@ object WikipediaRanking {
    *   several seconds.
    */
   def rankLangsReduceByKey(langs: List[String], rdd: RDD[WikipediaArticle]): List[(String, Int)] = {
-    rdd.flatMap(w => langs.map((_, w)).filter(t => t._2.text matches (".*" ++ t._1 ++ ".*") )).mapValues(_ => 1).reduceByKey(_ + _).sortBy(_._2,false).collect().toList
+    rdd.flatMap(w => langs.map((_, w)).filter(t => t._2.mentionsLanguage(t._1) )).mapValues(_ => 1).reduceByKey(_ + _).sortBy(_._2,false).collect().toList
   }
 
   def main(args: Array[String]) {
@@ -86,6 +86,10 @@ object WikipediaRanking {
     /* Output the speed of each ranking */
     println(timing)
     sc.stop()
+//
+//    println("idx1: " ++ langsRanked.toString)
+//    println("idx2: " ++ langsRanked2.toString)
+
   }
 
   val timing = new StringBuffer
