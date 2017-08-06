@@ -17,6 +17,7 @@ project/plugins/project/
 *.log
 
 /src/main/resources/wikipedia/wikipedia.dat
+/src/main/resources/stackoverflow/stackoverflow.csv
 
 # IntelliJ
 .idea/*
@@ -24,3 +25,4 @@ project/project/
 
 *.DS_Store
 .DS_Store
+

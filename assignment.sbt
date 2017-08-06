@@ -1,2 +1,3 @@
 course := "bigdata"
-assignment := "wikipedia"
+// assignment := "wikipedia"
+assignment := "stackoverflow"
