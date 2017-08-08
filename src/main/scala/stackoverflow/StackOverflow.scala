@@ -295,7 +295,7 @@ class StackOverflow extends Serializable {
       val mappedToLangs : Iterable[(String,Int)] = vs.map( x => (langs(x._1/langSpread), x._2) )
       val langLabel: String   = langs(vs.groupBy(_._1).maxBy(_._2.size)._1/langSpread)
       val clusterSize: Int    = vs.size
-      val langPercent: Double = mappedToLangs.filter(_._1 == langLabel).size / clusterSize
+      val langPercent: Double = (mappedToLangs.filter(_._1 == langLabel).size / clusterSize) * 100
       val medianScore: Int    = medianCalculator(vs.map(_._2).toArray)
       (langLabel, langPercent, clusterSize, medianScore)
     }
