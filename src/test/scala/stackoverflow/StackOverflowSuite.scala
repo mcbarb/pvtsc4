@@ -34,16 +34,32 @@ class StackOverflowSuite extends FunSuite with BeforeAndAfterAll {
     assert(instantiatable, "Can't instantiate a StackOverflow object")
   }
 
-  test("vectors count") {
+//  test("vectors count") {
+//    @transient lazy val conf: SparkConf = new SparkConf().setMaster("local").setAppName("StackOverflow")
+//    @transient lazy val sc: SparkContext = new SparkContext(conf)
+//
+//    val lines   = sc.textFile("src/main/resources/stackoverflow/stackoverflow.csv")
+//    val raw     = StackOverflow.rawPostings(lines)
+//    val grouped = StackOverflow.groupedPostings(raw)
+//    val scored  = StackOverflow.scoredPostings(grouped)
+//    val vectors = StackOverflow.vectorPostings(scored)
+//    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
+//  }
+
+  test("sub problem for testing") {
     @transient lazy val conf: SparkConf = new SparkConf().setMaster("local").setAppName("StackOverflow")
     @transient lazy val sc: SparkContext = new SparkContext(conf)
 
-    val lines   = sc.textFile("src/main/resources/stackoverflow/stackoverflow.csv")
+    val lines   = sc.makeRDD(sc.textFile("src/main/resources/stackoverflow/stackoverflow.csv").take(10).toSeq)
     val raw     = StackOverflow.rawPostings(lines)
     val grouped = StackOverflow.groupedPostings(raw)
     val scored  = StackOverflow.scoredPostings(grouped)
     val vectors = StackOverflow.vectorPostings(scored)
-    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
+
+    println("hakuna matata")
+    println(vectors)
+
+    assert(false)
   }
 
 

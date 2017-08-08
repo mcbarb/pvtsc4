@@ -24,12 +24,14 @@ object StackOverflow extends StackOverflow {
     val raw     = rawPostings(lines)
     val grouped = groupedPostings(raw)
     val scored  = scoredPostings(grouped)
-    val vectors = vectorPostings(scored)
+    val vectors = vectorPostings(scored).persist()
 //    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
 
     val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
     val results = clusterResults(means, vectors)
     printResults(results)
+
+    sc.stop()
   }
 }
 
@@ -286,18 +288,17 @@ class StackOverflow extends Serializable {
     // closestGrouped : Array[(Int,Int)] = (mean idx in means, Iterable[vector])
     // means : Array[(Int,Int)] = (k-means)
     // vectors : RDD[(Int,Int)] = (lang idx in langs * langSpread, answers highestScore)
-//    val groupedWithLang = closestGrouped.map({ case (langIdx, highestScore) => ()})
+    // groupedWithLang = closestGrouped.map({ case (langIdx, highestScore) => ()})
 
     val median = closestGrouped.mapValues { vs =>
-      val vsLangs : Iterable[String] = vs.map({ case (langIdx, highestScore) => langs(langIdx/langSpread)})
-      val langLabel: String   = vsLangs.groupBy(identity).maxBy(_._2.size)._1 // most common language in the cluster
-      val clusterSize: Int    = vs.size
-      val langPercent: Double = vsLangs.filter(_ == langLabel).size / clusterSize // percent of the questions in the most common language
-      val medianScore: Int    = medianCalculator(vs.map(_._2).toArray)
 
+      val mappedToLangs : Iterable[(String,Int)] = vs.map( x => (langs(x._1/langSpread), x._2) )
+      val langLabel: String   = langs(vs.groupBy(_._1).maxBy(_._2.size)._1/langSpread)
+      val clusterSize: Int    = vs.size
+      val langPercent: Double = mappedToLangs.filter(_._1 == langLabel).size / clusterSize
+      val medianScore: Int    = medianCalculator(vs.map(_._2).toArray)
       (langLabel, langPercent, clusterSize, medianScore)
     }
-
     median.collect().map(_._2).sortBy(_._4)
   }
 
