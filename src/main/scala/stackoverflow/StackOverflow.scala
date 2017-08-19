@@ -24,7 +24,7 @@ object StackOverflow extends StackOverflow {
     val raw     = rawPostings(lines)
     val grouped = groupedPostings(raw)
     val scored  = scoredPostings(grouped)
-    val vectors = vectorPostings(scored).persist()
+    val vectors = vectorPostings(scored) //.sample(true,0.1,12345)
 //    assert(vectors.count() == 2121822, "Incorrect number of vectors: " + vectors.count())
 
     val means   = kmeans(sampleVectors(vectors), vectors, debug = true)
@@ -120,7 +120,10 @@ class StackOverflow extends Serializable {
       }
     }
 
-    scored.map(t => (firstLangInTag(t._1.tags, langs).get * langSpread, t._2))
+    scored.map { case (posting, score) =>
+      val langIdx : Option[Int] = firstLangInTag(posting.tags, langs)
+      (langIdx, score)
+    }.filter(_._1.isDefined).map(t => (t._1.get * langSpread, t._2)).persist()
   }
 
 
@@ -162,7 +165,7 @@ class StackOverflow extends Serializable {
           case (lang, vectors) => reservoirSampling(lang, vectors.toIterator, perLang).map((lang, _))
         }).collect()
 
-    assert(res.length == kmeansKernels, res.length)
+    assert(res.length == kmeansKernels, s"sampledVectors length does not match number of kernels ${res.length}")
     res
   }
 
@@ -175,9 +178,15 @@ class StackOverflow extends Serializable {
 
   /** Main kmeans computation */
   @tailrec final def kmeans(means: Array[(Int, Int)], vectors: RDD[(Int, Int)], iter: Int = 1, debug: Boolean = false): Array[(Int, Int)] = {
-    val newMeans = means.clone() // you need to compute newMeans
+    val newMeans = means.clone()
 
-    // TODO: Fill in the newMeans array
+    val closest = vectors.map(p => (findClosest(p, means), p)).groupByKey()
+    val updates = closest.map(t => (t._1,averageVectors(t._2))).collect()
+
+    for ((i,newMean) <- updates) {
+      newMeans.update(i, newMean)
+    }
+
     val distance = euclideanDistance(means, newMeans)
 
     if (debug) {
@@ -223,7 +232,7 @@ class StackOverflow extends Serializable {
 
   /** Return the euclidean distance between two points */
   def euclideanDistance(a1: Array[(Int, Int)], a2: Array[(Int, Int)]): Double = {
-    assert(a1.length == a2.length)
+    assert(a1.length == a2.length, "arrays in Euclidean Distance do not have the same size")
     var sum = 0d
     var idx = 0
     while(idx < a1.length) {
@@ -283,8 +292,8 @@ class StackOverflow extends Serializable {
   }
 
   def clusterResults(means: Array[(Int, Int)], vectors: RDD[(Int, Int)]): Array[(String, Double, Int, Int)] = {
-    val closest = vectors.map(p => (findClosest(p, means), p))
-    val closestGrouped = closest.groupByKey()
+    val closest : RDD[(Int,(Int,Int))]= vectors.map(p => (findClosest(p, means), p))
+    val closestGrouped : RDD[(Int,Iterable[(Int,Int)])]= closest.groupByKey()
     // closestGrouped : Array[(Int,Int)] = (mean idx in means, Iterable[vector])
     // means : Array[(Int,Int)] = (k-means)
     // vectors : RDD[(Int,Int)] = (lang idx in langs * langSpread, answers highestScore)
